@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <link rel="stylesheet" href="css/elementIndex.css">
+    <link rel="stylesheet" href="css/elementUiIndex2.css">
+    <style>
+        .login-container {
+            /*弹性布局*/
+            display: flex;
+            /*子元素在水平方向保持居中*/
+            justify-content: center;
+            /*子元素在容器的垂直方向中间对齐*/
+            align-items: center;
+            background: #eee;
+            /*设置元素高度为可视化容器的100%*/
+            height: 100vh;
+        }
+
+        .login-center {
+            width: 400px;
+            height: 300px;
+            padding: 20px;
+        }
+
+        .title {
+            font-size: 22px;
+            text-align: center;
+            margin-bottom: 30px;
+            color: #4db3ff;
+        }
+        p{
+            text-align: center;
+        }
+        p a{
+            color: #409EFF;
+        }
+    </style>
+</head>
+<body>
+<!--划定最大范围-->
+<div id="app">
+    <template>
+        <div class="login-container">
+            <el-card class="login-center" shadow="hover">
+                <div class="title">用户登录</div>
+                <el-form :model="loginForm" :rules="rules" ref="ruleForm" @keyup.enter.native="login">
+                    <!-- prop:当前表单项使用的效验规则的那一属性-->
+                    <el-form-item prop="usernameOrPhone">
+                        <el-input v-model="loginForm.usernameOrPhone" placeholder="请输入用户名"></el-input>
+                    </el-form-item>
+                    <el-form-item prop="password">
+                        <el-input v-model="loginForm.password" placeholder="请输入密码" type="password"
+                                  show-password></el-input>
+                    </el-form-item>
+                    <el-form-item>
+                        <el-button type="primary" style="width: 100%" @click="login">登录</el-button>
+                        <p>还没账号？<a href="/register.html">去注册</a></p>
+                    </el-form-item>
+                </el-form>
+            </el-card>
+        </div>
+    </template>
+</div>
+<script src="js/jquery-3.2.1.js"></script>
+<script src="js/elementVue.js"></script>
+<script src="js/elementIndex.js"></script>
+<script>
+    //创建Vue对象
+    new Vue({
+        el: "#app", //Vue生效范围
+        //在data中定义页面上使用的变量
+        data() {
+            return {
+                //接收登录表单的变量
+                loginForm: {},
+                rules:{
+                    usernameOrPhone: [
+                        { required: true, message: '用户名不能为空', trigger: 'blur' }
+                    ],
+                    password: [
+                        { required: true, message: '密码不能为空', trigger: 'blur' }
+                    ]
+                }
+            }
+        },
+        methods: {
+            //登录方法
+            login() {
+                //校验指定表中是否校验规则,valid为true表示校验通过，不符合规则，返回false
+                this.$refs.ruleForm.validate(valid=>{
+                    if(valid){
+                        var that = this;
+                        //通过ajax
+                        $.ajax({
+                            url: "/api/user/login",
+                            type: "post",
+                            data: this.loginForm,
+                            success(res) {
+                                console.log(res)
+                                if (res.code == 200) {
+                                    //登录成功
+                                    that.$message({
+                                        message: "登录成功"
+                                        , type: "success"
+                                    })
+                                    //跳转到聊天页面
+                                    window.location.href = "./chat.html"
+
+                                } else {
+                                    //登录失败
+                                    that.$message({
+                                        message: res.msg
+                                        , type: "error"
+                                    })
+
+                                }
+                            }
+                        })
+                    }
+
+                })
+
+            }
+        }
+    })
+</script>
+</body>
+</html>

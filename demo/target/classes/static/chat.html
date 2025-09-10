@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <!--引入样式文件-->
+    <link rel="stylesheet" href="css/elementIndex.css">
+    <link rel="stylesheet" href="css/elementUiIndex2.css">
+    <style>
+        .ai-chat-container{
+            height: 100vh;
+            display: flex;
+        }
+        /*侧边栏标题*/
+        .menu-title{
+            padding: 20px;
+            text-align: center;
+            border-bottom: 1px solid #434a50;
+        }
+        /*主内容区，聊天区域*/
+        .chat-main{
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            padding: 0;
+            background: #F5F7FA;
+        }
+        .chat-messages{
+            flex: 1;
+            padding: 20px;
+            overflow-y:auto;
+            background: white;
+        }
+        .message{
+            display: flex;
+            margin-bottom: 20px;
+        }
+        .message-avatar{
+            margin-right: 15px;
+        }
+        .message-content{
+            max-width: 70%;
+        }
+        .message-sender{
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #333333;
+        }
+        .message-text{
+            padding: 10px 15px;
+            border-radius: 15px;
+            line-height: 1.5;
+        }
+        .message-time{
+            font-size: 12px;
+            color: #999999;
+            margin-top: 5px;
+        }
+        /*ai和用户的内容样式区分*/
+        .ai .message-text{
+            color: #333333;
+            background: #F2F6FC;
+        }
+        .user .message-text{
+            color: white;
+            background: #409EFF;
+        }
+        /* 用户消息居右 */
+        .user {
+            justify-content: flex-end;
+        }
+        /* 用户消息头像顺序调整 */
+        .user .message-avatar {
+            order: 1;
+            margin-right: 0;
+            margin-left: 15px;
+        }
+        /* 用户消息内容对齐 */
+        .user .message-content {
+            text-align: right;
+        }
+        /*输入区域*/
+        .chat-input{
+            padding: 15px;
+            background-color: white;
+            border-top: 1px solid #ebeef5;
+        }
+        .input-actions{
+            margin-top: 10px;
+            text-align: right;
+        }
+        /*思考内容*/
+        .think-container {
+            margin-top: 16px;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid rgba(67, 97, 238, 0.2);
+            position: relative;
+        }
+        .think-toggle {
+            background-color: rgba(67, 97, 238, 0.1);
+            padding: 10px 14px;
+            font-size: 13px;
+            color: #4361ee;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            border-radius: 8px 8px 0 0;
+            user-select: none;
+            font-weight: 500;
+        }
+
+        .think-content {
+            background-color: rgba(67, 97, 238, 0.03);
+            padding: 14px;
+            font-size: 14px;
+            border-radius: 0 0 8px 8px;
+            line-height: 1.6;
+            color: #4b5563;
+            border-top: none;
+            display: none;
+        }
+
+        .markdown-content {
+            line-height: 1.6;
+            font-size: 15px;
+        }
+    </style>
+</head>
+<body>
+<div id="app">
+    <template>
+        <!--内容区域-->
+        <div class="ai-chat-container">
+            <el-container style="height: 100vh">
+                <!--侧边栏-->
+                <el-aside style="width: 200px;
+                background-color: #545c64;
+                color: white">
+                    <div class="menu-title">
+                        <h3>AI聊天助手</h3>
+                    </div>
+                    <el-menu default-active="1"
+                    active-text-color="#ffd04b"
+                    text-color="#fff"
+                    background-color="#545c64">
+                        <el-menu-item index="1">
+                            <span>新对话</span>
+                        </el-menu-item>
+                        <el-menu-item index="2">
+                            <span>对话历史</span>
+                        </el-menu-item>
+                        <el-menu-item index="3">
+                            <span>设置</span>
+                        </el-menu-item>
+                    </el-menu>
+                </el-aside>
+                <!--主内容区-->
+                <el-container>
+                    <!--聊天区域-->
+                    <el-main class="chat-main">
+                        <div class="chat-messages" ref="messageContainer">
+                            <!--每一次回答-->
+                            <div
+                                    v-for="(msg,index) in messages"
+                                    :key="index"
+                                    :class="['message',msg.sender]"
+                            >
+                                <!--头像-->
+                                <div class="message-avatar">
+                                    <el-avatar icon="el-icon-star-on"
+                                    :style="{backgroundColor:msg.sender==='ai'?'#67c2ff':'#409eff'}">
+                                    </el-avatar>
+                                </div>
+                                <!--回答内容-->
+                                <div class="message-content">
+                                    <div class="message-sender">{{msg.sender==='ai'?'AI助手':msg.nickName}}</div>
+                                    <div class="message-text" v-html="msg.content">{{msg.content}}</div>
+                                    <div class="message-time">
+                                        {{msg.createTime}}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!--输入区域-->
+                        <div class="chat-input">
+                            <el-input
+                                    type="textarea"
+                                    :row="3"
+                                    placeholder="请输入您的问题..."
+                                    v-model="inputMessage"
+                                    @keyup.enter.native="sendMessage"
+                                    resize="none"
+                            ></el-input>
+                            <div class="input-actions">
+                                <el-button type="primary"
+                                           @click="sendMessage"
+                                           :disabled="!inputMessage.trim()"
+                                >发送</el-button>
+                                <el-button @click="cleanChat">清空</el-button>
+                            </div>
+                        </div>
+                    </el-main>
+                </el-container>
+
+            </el-container>
+        </div>
+
+
+    </template>
+</div>
+
+
+<!--引入脚本文件-->
+<script src="js/jquery-3.2.1.js"></script>
+<script src="js/elementVue.js"></script>
+<script src="js/elementIndex.js"></script>
+<script src="js/dayjs.min.js"></script>
+<script src="js/marked.min.js"></script>
+<script >
+    // 切换思考过程显示
+    $(function () {
+        // 设置Markdown渲染选项
+        marked.setOptions({
+            breaks: true, // 支持GitHub风格的换行符
+            gfm: true,    // 支持GitHub风格的Markdown
+        });
+    })
+    function toggleThinking(element) {
+        const thinkContent = element.nextElementSibling;
+        element.classList.toggle('active');
+
+        // 显示/隐藏内容
+        if (thinkContent.style.display === 'block') {
+            thinkContent.style.display = 'none';
+        } else {
+            thinkContent.style.display = 'block';
+        }
+    }
+
+    new Vue({
+        el:"#app",
+        data(){
+            return{
+                //对话记录保存
+                messages:[
+                    {
+                        sender:"ai",  //用户还是ai
+                        content:"您好！我是ai助手,要我帮你干啥",  //对话内容
+                        createTime: dayjs().format('YYYY-MM-DD HH:mm:ss') //对话时间
+                    }
+                ],
+                //用户输入的内容
+                inputMessage:"",
+                // //是否加载中
+                // loading:false,
+                // //请求后端SSE数据的对象
+                // eventSource:null,
+                //当前ai回答在messages列表中索引值
+                currentStreamingIndex:-1
+            }
+        },
+        //页面加载时就会执行的组件
+        created(){
+            this.getChatHistory();
+            },
+        methods:{
+            //获取当前用户之前的聊天记录
+            getChatHistory(){
+                //定义that对象代表当前Vue对象
+              var that = this;
+              $.ajax({
+                  url:"/api/chat/list",
+                  type:"post",
+                  success(res){
+                      if(res.code == 200){
+                          //给存储聊天记录的变量赋值
+                          that.messages = res.data;
+                          that.messages.forEach(item=>{
+                              //展示思考过程
+                             item.content = item.content.replace(/<think>([\s\S]*?)<\/think>/g,
+                                 '<div class="think-container">' +
+                                 '<div class="think-toggle" onclick="toggleThinking(this)">思考过程</div>' +
+                                 '<div class="think-content markdown-content">$1</div></div>');
+
+                             //将符号转为带格式的文本
+                             item.content = marked.parse(item.content);
+                          })
+                          //初始化的时候自动去显示最新的消息$nextTick()延迟执行一段代码，直到DOM更新完毕
+                          that.$nextTick(()=>{
+                              that.scrollToBottom();
+                          });
+                      }else if(res.code == 500){
+                          that.$message({
+                              type:'error',
+                              message:res.message
+                          })
+                      }
+                  }
+              })
+            },
+            //清空聊天框的内容
+            cleanChat(){
+                this.$confirm('确定要清除当前会话吗?','提示',{
+                    confirmButtonText:'确定',
+                    cancelButtonText:'取消',
+                    type:'warning'
+                }).then(()=>{
+                    //将信息置为初始状态
+                    this.messages = [
+                        {
+                            sender:"ai",  //用户还是ai
+                            content:"您好！我是ai助手,要我帮你干啥",  //对话内容
+                            createTime: dayjs().format('YYYY-MM-DD HH:mm:ss') //对话时间
+
+                        }
+                    ];
+                    this.inputMessage = '';
+                    this.loading = false;
+                    this.currentStreamingIndex = -1;
+                })
+            },
+            async sendMessage(){
+                //非空校验，判断用户是否提问信息
+                if(!this.inputMessage.trim()){
+                    return
+                }
+
+                //添加用户信息到messages
+                const userMessage = {
+                    sender:"user",
+                    content:this.inputMessage,
+                    createTime:dayjs().format('YYYY-MM-DD HH:mm:ss')
+                }
+                this.messages.push(userMessage);
+
+                //添加ai回答的占位信息
+                const aiMessage = {
+                    sender:"ai",
+                    content:'正在思考中....',
+                    createTime:dayjs().format('YYYY-MM-DD HH:mm:ss')
+                }
+                this.messages.push(aiMessage);
+                //当前ai的回答内容在数组中的索引值
+                this.currentStreamingIndex = this.messages.length-1
+                this.loading = true;
+
+
+                //准备url发送请求
+                let url = "/api/chat/stream?question="+this.inputMessage;
+                //把用户输入的信息清空
+                this.inputMessage = '';
+
+                const formData = new FormData();
+                formData.append('message',"介绍一下你自己");
+                let fetchOptions = {
+                    headers: {
+                        'Authorization': `Bearer`
+                    }
+                };
+                const response = await fetch(url, fetchOptions);
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let aiResponse = '';
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    const chunk = decoder.decode(value, { stream: true });
+                    aiResponse += chunk;
+
+                    //更新AI回复
+                    let parsedResponse = marked.parse(aiResponse);
+
+                    // 处理思考过程标签
+                    parsedResponse = parsedResponse.replace(/<think>([\s\S]*?)<\/think>/g,
+                        '<div class="think-container">' +
+                            '<div class="think-toggle" onclick="toggleThinking(this)">思考过程</div>' +
+                        '<div class="think-content markdown-content">$1</div></div>');
+                    // console.log(parsedResponse)
+                    this.appendToStream(parsedResponse);
+                }
+            },
+
+            //将ai回答的信息进行页面渲染
+            appendToStream(text){
+                if(this.currentStreamingIndex>=0){
+                    const currentMessage = this.messages[this.currentStreamingIndex];
+                    currentMessage.content=text;
+                    currentMessage.createTime=dayjs().format('YYYY-MM-DD HH:mm:ss');
+
+                    //触发视图更新
+                    // this.$set(this.messages,this.currentStreamingIndex,{...currentMessage});
+
+                    //自动进行页面滚动
+                    this.$nextTick(()=>{
+                        this.scrollToBottom();
+                    })
+                }
+            },
+            //当用户或者ai进行回答的时候，聊天窗口自动向下滚动
+            scrollToBottom(){
+                //通过ref获取消息容器
+                const container = this.$refs.messageContainer;
+                if(container){
+                    container.scrollTop = container.scrollHeight;
+                }
+            }
+        }
+    })
+</script>
+</body>
+</html>

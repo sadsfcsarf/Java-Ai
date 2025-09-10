@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.example.mapper.UserMapper">
+    <!--
+        id:mapper中对应方法的名称
+        parameterType:mapper中对应参数的类型
+    -->
+    <insert id="insertUser" parameterType="com.example.dto.UserDto">
+        insert into user(username, password, nickname, sex, phone, create_time)
+        values (#{username}, #{password}, #{nickname}, #{sex}, #{phone}, now())
+    </insert>
+    <!--resultType:返回值类型-->
+    <select id="selectUserByUserNameOrPhone" resultType="com.example.dto.UserDto">
+        select *
+        from user
+        where username = #{param}
+           or phone = #{param}
+    </select>
+
+
+</mapper>

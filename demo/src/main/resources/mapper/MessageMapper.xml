@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.example.mapper.MessageMapper">
+
+    <insert id="insertMessage" parameterType="com.example.dto.MessageDto">
+        insert into message(user_id, sender, content, create_time)
+        values (#{userId}, #{sender}, #{content}, now())
+    </insert>
+    <select id="selectMessageByUser" resultType="com.example.dto.MessageDto">
+        select
+            m.*,u.nickname
+        from message m
+        inner join user u on m.user_id = u.id
+        <where>
+            u.id = #{userId}
+        </where>
+
+    </select>
+
+
+</mapper>
