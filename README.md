@@ -62,3 +62,8 @@ JS 脚本（Vue 实例、AI 对话逻辑、Markdown 渲染等）。
 用户登录 / 注册：通过/api/user/login或/api/user/register接口，验证成功后将用户信息存入 Session。
 AI 对话：用户输入问题后，前端调用/api/chat/stream接口，后端通过 Ollama 模型生成回答，实时返回并保存对话记录。
 权限控制：未登录用户无法访问/api/**下的受保护接口（除登录 / 注册），由AuthInterceptor拦截验证。
+运行截图
+<img width="1500" height="971" alt="image" src="https://github.com/user-attachments/assets/f18889b4-e4c8-4e15-ab0e-4495fa995b74" />
+<img width="1882" height="912" alt="image" src="https://github.com/user-attachments/assets/412af244-e852-4fd4-8b51-8e97f738ba92" />
+
+
