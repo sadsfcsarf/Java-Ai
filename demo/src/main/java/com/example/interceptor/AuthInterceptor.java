@@ -2,6 +2,7 @@ package com.example.interceptor;
 
 
 import com.example.dto.UserDto;
+import com.example.exception.AuthException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
@@ -21,7 +22,9 @@ public class AuthInterceptor implements HandlerInterceptor {
         HttpSession session = request.getSession();
         UserDto userDto = (UserDto) session.getAttribute("user");
         if (userDto==null) {
-            return false;
+            //如果登录状态为空，则抛出未登录异常信息
+            throw new AuthException("用户未登录");
+//            return false;
         }
 
         return true;

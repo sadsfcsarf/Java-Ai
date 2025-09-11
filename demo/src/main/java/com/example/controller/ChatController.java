@@ -1,15 +1,26 @@
 package com.example.controller;
 
+import com.alibaba.cloud.ai.dashscope.audio.DashScopeSpeechSynthesisOptions;
+import com.alibaba.cloud.ai.dashscope.audio.synthesis.SpeechSynthesisModel;
+import com.alibaba.cloud.ai.dashscope.audio.synthesis.SpeechSynthesisPrompt;
+import com.alibaba.cloud.ai.dashscope.audio.synthesis.SpeechSynthesisResponse;
+import com.alibaba.nacos.shaded.io.grpc.Status;
 import com.example.dto.MessageDto;
 import com.example.dto.UserDto;
 import com.example.service.MessageService;
+import org.springframework.ai.image.*;
 import org.springframework.ai.ollama.OllamaChatModel;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.ssl.SslProperties;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import reactor.core.publisher.Flux;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -27,6 +38,12 @@ public class ChatController {
     private OllamaChatModel ollamaChatModel;
     @Autowired
     private MessageService messageService;
+    //引入ai的图片模型
+    @Autowired
+    private ImageModel imageModel;
+    @Autowired
+    private SpeechSynthesisModel synthesisModel;
+    private static final String FILE_PATH = "src/main/resources/static/audio/";
 
 
     /*关于ai的对话方式*/
@@ -89,4 +106,51 @@ public class ChatController {
         return map;
     }
 
+    /*根据用户描述生成图片*/
+    @RequestMapping("/img")
+    public Map<String,Object> img(@RequestParam(value = "prompt",defaultValue = "葫芦娃") String prompt){
+        //图片生成项
+        ImageOptions options = ImageOptionsBuilder.builder().N(1).build();
+        //图像生成
+        ImageResponse response = imageModel.call(new ImagePrompt(prompt,options));
+        Map<String,Object> result = new HashMap<>();
+        result.put("code",200);
+        result.put("data",response.getResult());
+        return result;
+
+    }
+    @RequestMapping("/audio")
+    public Map<String,Object> audio(@RequestParam(value = "text",defaultValue = "你好，我是吴彦祖") String text){
+        //语音生成项
+        DashScopeSpeechSynthesisOptions options = DashScopeSpeechSynthesisOptions.builder()
+                .volume(60)//音量
+                .build();
+        SpeechSynthesisResponse response = synthesisModel.call(new SpeechSynthesisPrompt(text,options));
+        //音频名称
+        String fileName = "output_"+System.currentTimeMillis()+".mp3";
+
+        //音频文件
+        File file = new File(FILE_PATH+fileName);
+
+        //字节输出流
+        try{
+            FileOutputStream fileOutputStream = new FileOutputStream( file);
+            //获取返回的音频信息
+            ByteBuffer byteBuffer = response.getResult().getOutput().getAudio();
+            //将内容写出到指定文件位置
+            fileOutputStream.write(byteBuffer.array());
+
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("code",200);
+        result.put("data",fileName);
+
+        return result;
+
+    }
 }
+

@@ -197,6 +197,10 @@
                                            @click="sendMessage"
                                            :disabled="!inputMessage.trim()"
                                 >发送</el-button>
+                                <el-button type="primary"
+                                           @click="sendMsgForImg"
+                                           :disabled="!inputMessage.trim()"
+                                >生成图片</el-button>
                                 <el-button @click="cleanChat">清空</el-button>
                             </div>
                         </div>
@@ -296,6 +300,9 @@
                               message:res.message
                           })
                       }
+                      else if(res.code == 401){
+                          window.location.href = '/login.html';
+                      }
                   }
               })
             },
@@ -380,6 +387,43 @@
                     // console.log(parsedResponse)
                     this.appendToStream(parsedResponse);
                 }
+            },
+            async sendMsgForImg(){
+                const userMsg = {
+                    sender:"user",
+                    content:this.inputMessage,
+                    createTime:dayjs().format('YYYY-MM-DD HH:mm:ss')
+                }
+                //放到对话列表中
+                this.messages.push(userMsg);
+                //增添关于ai的回答
+                const aiMsg = {
+                    sender:"ai",
+                    content:"AI 正在生成中....",
+                    createTime:dayjs().format('YYYY-MM-DD HH:mm:ss')
+                }
+                //放到对话列表中
+                this.messages.push(aiMsg);
+                //滚动屏幕到ai的回答
+                this.$nextTick(()=>{
+                    this.scrollToBottom();
+                })
+                //发送请求获取返回信息
+                let url = "/api/chat/img?prompt="+this.inputMessage;
+                //把用户输入的信息清空
+                this.inputMessage = '';
+                const response = await fetch(url,{});
+                const resData = await response.json();
+                console.log(resData)
+                let imgHtml = "";
+                if(resData.code == 200){
+                    imgHtml = '<div style="width:100px;height:100px">\n' +
+                        `<img style="width:100x" src="${resData.data.output.url}">\n` +
+                        '</div>';
+                }
+                //将组装的图片替换掉之前的提示信息
+                this.messages[this.messages.length-1].content = imgHtml;
+
             },
 
             //将ai回答的信息进行页面渲染
