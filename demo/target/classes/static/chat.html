@@ -174,7 +174,7 @@
                                 </div>
                                 <!--回答内容-->
                                 <div class="message-content">
-                                    <div class="message-sender">{{msg.sender==='ai'?'AI助手':msg.nickName}}</div>
+                                    <div class="message-sender">{{msg.sender==='ai'?'AI助手':msg.nickname}}</div>
                                     <div class="message-text" v-html="msg.content">{{msg.content}}</div>
                                     <div class="message-time">
                                         {{msg.createTime}}
@@ -201,6 +201,10 @@
                                            @click="sendMsgForImg"
                                            :disabled="!inputMessage.trim()"
                                 >生成图片</el-button>
+                                <el-button type="primary"
+                                           @click="sendMsgForAudio"
+                                           :disabled="!inputMessage.trim()"
+                                >生成音频</el-button>
                                 <el-button @click="cleanChat">清空</el-button>
                             </div>
                         </div>
@@ -281,6 +285,7 @@
                           //给存储聊天记录的变量赋值
                           that.messages = res.data;
                           that.messages.forEach(item=>{
+                              if (item.type=='0'&&item.sender==='ai'){
                               //展示思考过程
                              item.content = item.content.replace(/<think>([\s\S]*?)<\/think>/g,
                                  '<div class="think-container">' +
@@ -288,20 +293,28 @@
                                  '<div class="think-content markdown-content">$1</div></div>');
 
                              //将符号转为带格式的文本
-                             item.content = marked.parse(item.content);
+                             item.content = marked.parse(item.content);}
+                              if (item.type=='1'&&item.sender==='ai'){
+                                  item.content='<div style="width: 100px;height: 100px">\n' +
+                                      `<img style="width: 100px" src="${item.content}">\n` +
+                                      '</div>'
+                              }
+                              if (item.type=='2'&&item.sender==='ai'){
+                                  item.content=`<audio src="${item.content}"controls/>`
+                              }
                           })
-                          //初始化的时候自动去显示最新的消息$nextTick()延迟执行一段代码，直到DOM更新完毕
+
+                          //初始化的时候自动去滚动聊天窗口 $nextTick:延迟执行一段代码，直到下次DOM更新结束之后才执行
                           that.$nextTick(()=>{
-                              that.scrollToBottom();
-                          });
+                              that.scrollToBottom()
+                          })
                       }else if(res.code == 500){
                           that.$message({
                               type:'error',
-                              message:res.message
+                              message:res.msg
                           })
-                      }
-                      else if(res.code == 401){
-                          window.location.href = '/login.html';
+                      }else if(res.code == 401){
+                          window.location.href = "/login.html"
                       }
                   }
               })
@@ -389,6 +402,49 @@
                 }
             },
             async sendMsgForImg(){
+              //将用户提问的问题展示
+              const userMsg = {
+                  sender:"user",
+                  content:this.inputMessage,
+                  createTime:dayjs().format('YYYY-MM-DD HH:mm:ss')
+              }
+              //放到对话列表中
+                this.messages.push(userMsg);
+
+              //添加关于AI的回答
+                const aiMsg = {
+                    sender:"ai",
+                    content:'AI正在生成中...',
+                    createTime:dayjs().format('YYYY-MM-DD HH:mm:ss')
+                }
+
+                //放到对话列表中
+                this.messages.push(aiMsg);
+
+                //滚动屏幕到AI回答位置
+                this.$nextTick(()=>{
+                    this.scrollToBottom();
+                })
+
+                //发送请求获取返回信息
+                let url = "/api/chat/img?prompt="+this.inputMessage;
+
+                //清空输入框的信息
+                this.inputMessage = '';
+
+                const response = await fetch(url,{});
+                const resData = await response.json();
+                console.log(resData)
+                let imgHtml = "";
+                if(resData.code==200){
+                     imgHtml = '<div style="width: 100px;height: 100px">\n' +
+                        `<img style="width: 100px" src="${resData.data.output.url}">\n` +
+                        '</div>'
+                }
+                //将组装的图片替换掉之前的提示信息
+                this.messages[this.messages.length-1].content = imgHtml;
+            },
+            async sendMsgForAudio(){
                 const userMsg = {
                     sender:"user",
                     content:this.inputMessage,
@@ -399,33 +455,31 @@
                 //增添关于ai的回答
                 const aiMsg = {
                     sender:"ai",
-                    content:"AI 正在生成中....",
+                    content:"AI正在转换中...",
                     createTime:dayjs().format('YYYY-MM-DD HH:mm:ss')
                 }
-                //放到对话列表中
-                this.messages.push(aiMsg);
-                //滚动屏幕到ai的回答
+                this.messages.push(aiMsg)
+                //发送请求获取返回信息
+                let url = "/api/chat/audio?text="+this.inputMessage;
+                //清空输入框
+                this.inputMessage = '';
+                //发送请求
+                const response = await fetch(url,{});
+                //处理结果集
+                const resData = await response.json();
+                console.log(resData)
+
+                let audioHtml = "";
+                if(resData.code==200){
+                    audioHtml = `<audio  src="audio/${resData.data}"controls>`;
+                    this.messages[this.messages.length-1].content = audioHtml;
+                }
+                //滚动屏幕到最新的回答位置
                 this.$nextTick(()=>{
                     this.scrollToBottom();
                 })
-                //发送请求获取返回信息
-                let url = "/api/chat/img?prompt="+this.inputMessage;
-                //把用户输入的信息清空
-                this.inputMessage = '';
-                const response = await fetch(url,{});
-                const resData = await response.json();
-                console.log(resData)
-                let imgHtml = "";
-                if(resData.code == 200){
-                    imgHtml = '<div style="width:100px;height:100px">\n' +
-                        `<img style="width:100x" src="${resData.data.output.url}">\n` +
-                        '</div>';
-                }
-                //将组装的图片替换掉之前的提示信息
-                this.messages[this.messages.length-1].content = imgHtml;
 
             },
-
             //将ai回答的信息进行页面渲染
             appendToStream(text){
                 if(this.currentStreamingIndex>=0){

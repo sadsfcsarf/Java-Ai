@@ -5,6 +5,7 @@ import com.alibaba.cloud.ai.dashscope.audio.synthesis.SpeechSynthesisModel;
 import com.alibaba.cloud.ai.dashscope.audio.synthesis.SpeechSynthesisPrompt;
 import com.alibaba.cloud.ai.dashscope.audio.synthesis.SpeechSynthesisResponse;
 import com.alibaba.nacos.shaded.io.grpc.Status;
+import com.example.annotation.LoginUser;
 import com.example.dto.MessageDto;
 import com.example.dto.UserDto;
 import com.example.service.MessageService;
@@ -20,6 +21,9 @@ import reactor.core.publisher.Flux;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.net.URI;
+import java.net.URL;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.List;
@@ -44,6 +48,7 @@ public class ChatController {
     @Autowired
     private SpeechSynthesisModel synthesisModel;
     private static final String FILE_PATH = "src/main/resources/static/audio/";
+    private static final String IMG_FILE_PATH = "src/main/resources/static/img/";
 
 
     /*关于ai的对话方式*/
@@ -58,17 +63,17 @@ public class ChatController {
      * 将回答以流的形式返回给
      * */
     @RequestMapping("/stream")
-    public Flux<String> stream(String question) {
+    public Flux<String> stream(String question,@LoginUser UserDto userDto) {
         if (question == null || question.length() == 0) {
             question = "Hello";
         }
 
-
         //保存用户的提问记录
         MessageDto userMsg = new MessageDto();
-        userMsg.setUserId(1);
+        userMsg.setUserId(userDto.getId());
         userMsg.setSender("user");
         userMsg.setContent(question);
+        userMsg.setType("0");
         messageService.insertMessage(userMsg);
 
         //保存所有回答片段的可变字符串
@@ -82,8 +87,9 @@ public class ChatController {
         }).doOnComplete(() -> {
 //            System.out.println("所有回答完成");
             MessageDto aiMsg = new MessageDto();
-            aiMsg.setUserId(1);
+            aiMsg.setUserId(userDto.getId());
             aiMsg.setSender("ai");
+            aiMsg.setType("0");
             aiMsg.setContent(allMsg.toString());
             messageService.insertMessage(aiMsg);
         });
@@ -91,8 +97,7 @@ public class ChatController {
     }
     /*根据用户查询聊天记录*/
     @RequestMapping("/list")
-    public Map<String, Object> list(UserDto userDto){
-        userDto.setId(1);
+    public Map<String, Object> list(@LoginUser UserDto userDto){
         Map<String, Object> map = new HashMap<>();
         try {
             List<MessageDto> list = messageService.selectMessageByUser(userDto.getId());
@@ -108,47 +113,99 @@ public class ChatController {
 
     /*根据用户描述生成图片*/
     @RequestMapping("/img")
-    public Map<String,Object> img(@RequestParam(value = "prompt",defaultValue = "葫芦娃") String prompt){
-        //图片生成项
-        ImageOptions options = ImageOptionsBuilder.builder().N(1).build();
-        //图像生成
-        ImageResponse response = imageModel.call(new ImagePrompt(prompt,options));
+    public Map<String,Object> img(@RequestParam(value = "prompt",defaultValue = "葫芦娃") String prompt,@LoginUser UserDto userDto){
         Map<String,Object> result = new HashMap<>();
-        result.put("code",200);
-        result.put("data",response.getResult());
+        try {
+
+
+            //保存用户提问记录
+            MessageDto messageDto = new MessageDto();
+            messageDto.setUserId(userDto.getId());
+            messageDto.setSender("user");
+            messageDto.setContent(prompt);
+            messageDto.setType("1");
+            messageService.insertMessage(messageDto);
+            //图片生成项
+            ImageOptions options = ImageOptionsBuilder.builder().N(1).build();
+
+            //图像生成
+            ImageResponse response = imageModel.call(new ImagePrompt(prompt, options));
+            //图片保存到本地
+            String imgUrl = response.getResult().getOutput().getUrl();
+            URL url = URI.create(imgUrl).toURL();
+            //获取输出流信息
+            InputStream inputStream = url.openStream();
+            //图片名称
+            String imgName = "output_"+System.currentTimeMillis()+".png";
+            //输出流信息
+            FileOutputStream outputStream = new FileOutputStream(IMG_FILE_PATH+imgName);
+            outputStream.write(inputStream.readAllBytes());
+
+            //返回图片信息
+            MessageDto aiMsg = new MessageDto();
+            aiMsg.setUserId(userDto.getId());
+            aiMsg.setSender("ai");
+            aiMsg.setType("1");
+            aiMsg.setContent("/img/"+imgName);
+            messageService.insertMessage(aiMsg);
+            result.put("code", 200);
+            result.put("data", response.getResult());
+        }catch (Exception e){
+            result.put("code", 500);
+            result.put("msg", e.getMessage());
+            e.printStackTrace();
+        }
         return result;
 
     }
     @RequestMapping("/audio")
-    public Map<String,Object> audio(@RequestParam(value = "text",defaultValue = "你好，我是吴彦祖") String text){
-        //语音生成项
-        DashScopeSpeechSynthesisOptions options = DashScopeSpeechSynthesisOptions.builder()
-                .volume(60)//音量
-                .build();
-        SpeechSynthesisResponse response = synthesisModel.call(new SpeechSynthesisPrompt(text,options));
-        //音频名称
-        String fileName = "output_"+System.currentTimeMillis()+".mp3";
-
-        //音频文件
-        File file = new File(FILE_PATH+fileName);
-
+    public Map<String,Object> audio(@RequestParam(value = "text",defaultValue = "你好，我是吴彦祖") String text,@LoginUser UserDto userDto){
+        Map<String, Object> result = new HashMap<>();
         //字节输出流
         try{
+            //保存用户提问记录
+            MessageDto userMsg = new MessageDto();
+            userMsg.setUserId(userDto.getId());
+            userMsg.setSender("user");
+            userMsg.setContent(text);
+            userMsg.setType("2");
+            messageService.insertMessage(userMsg);
+            //语音生成项
+            DashScopeSpeechSynthesisOptions options = DashScopeSpeechSynthesisOptions.builder()
+                    .speed(1.0f)//语速
+                    .pitch(0.9)//语调
+                    .volume(60)//音量
+                    .build();
+            SpeechSynthesisResponse response = synthesisModel.call(new SpeechSynthesisPrompt(text,options));
+            //音频名称
+            String fileName = "output_"+System.currentTimeMillis()+".mp3";
+
+            //音频文件
+            File file = new File(FILE_PATH+fileName);
+
             FileOutputStream fileOutputStream = new FileOutputStream( file);
             //获取返回的音频信息
             ByteBuffer byteBuffer = response.getResult().getOutput().getAudio();
             //将内容写出到指定文件位置
             fileOutputStream.write(byteBuffer.array());
+            MessageDto aiMsg = new MessageDto();
+            aiMsg.setUserId(userDto.getId());
+            aiMsg.setSender("ai");
+            aiMsg.setType("2");
+            aiMsg.setContent("/audio/"+fileName);
+            messageService.insertMessage(aiMsg);
+
+
+
+
+            result.put("code",200);
+            result.put("data",fileName);
 
         }catch (Exception e){
             e.printStackTrace();
+            result.put("code",500);
+            result.put("msg",e.getMessage());
         }
-
-
-        Map<String, Object> result = new HashMap<>();
-        result.put("code",200);
-        result.put("data",fileName);
-
         return result;
 
     }

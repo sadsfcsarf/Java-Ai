@@ -23,6 +23,17 @@ public class MessageDto {
     //创建 时间
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
     private Date createTime;
+    //对话类型 0：对话 1：图片 2：音频
+    private String type;
+
+    public String getType() {
+        return type;
+    }
+
+    public void setType(String type) {
+        this.type = type;
+    }
+
     private String nickName;
 
     public Integer getId() {

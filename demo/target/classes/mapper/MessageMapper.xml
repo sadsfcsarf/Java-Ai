@@ -3,8 +3,8 @@
 <mapper namespace="com.example.mapper.MessageMapper">
 
     <insert id="insertMessage" parameterType="com.example.dto.MessageDto">
-        insert into message(user_id, sender, content, create_time)
-        values (#{userId}, #{sender}, #{content}, now())
+        insert into message(user_id, sender, content, create_time, type)
+        values (#{userId}, #{sender}, #{content}, now(),#{type})
     </insert>
     <select id="selectMessageByUser" resultType="com.example.dto.MessageDto">
         select
