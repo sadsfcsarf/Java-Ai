@@ -1,38 +1,162 @@
-# Java-Ai
-这个项目是一个基于 Spring Boot 框架开发的 AI 聊天助手应用，主要功能是提供用户与 AI 模型的对话交互，并包含用户认证、聊天记录管理等功能。以下是项目的关键信息整理：
-1. 技术栈
-后端：Spring Boot、Spring AI（集成 Ollama AI 模型）、MyBatis（数据访问）、MySQL（数据库）。
-前端：Vue.js、Element UI（UI 组件库）、Marked.js（Markdown 渲染）、Day.js（时间处理）。
-AI 交互：通过 Ollama 调用本地部署的deepseek-r1:1.5b模型（配置在application.properties中）。
-2. 核心功能
-用户认证：支持用户登录、注册，通过AuthInterceptor拦截器实现接口权限控制（拦截/api/**路径，排除登录 / 注册接口），登录状态通过 Session 管理。
-AI 对话：提供两种交互方式：
-同步调用：通过/api/chat/call接口直接返回 AI 回答。
-流式返回：通过/api/chat/stream接口以流的形式实时返回 AI 回答片段（适合长文本生成）。
-聊天记录管理：保存用户与 AI 的对话记录到数据库，可通过/api/chat/list接口查询历史记录。
-前端界面：提供聊天交互界面（chat.html），包含消息展示区、输入框、侧边栏（对话管理、设置等），支持 Markdown 格式渲染和消息时间显示。
-3. 项目结构
-后端核心目录：
-com.example.controller：控制器（UserController处理用户相关，ChatController处理 AI 对话）。
-com.example.service：业务逻辑（UserService用户服务、MessageService聊天记录服务）。
-com.example.dto：数据传输对象（UserDto用户信息、MessageDto消息记录）。
-com.example.config：配置类（WebMvcConfig注册拦截器）。
-com.example.interceptor：拦截器（AuthInterceptor登录验证）。
-前端资源：
-静态页面（index.html主页面、chat.html聊天界面）。
-CSS 样式（Element UI 相关样式文件）。
-JS 脚本（Vue 实例、AI 对话逻辑、Markdown 渲染等）。
-配置文件：application.properties配置数据库连接、Ollama 地址、MyBatis 映射等。
-4. 数据存储
-使用 MySQL 数据库（库名javaai），存储用户信息和聊天记录。
-通过 MyBatis 的mapper接口（如UserMapper、消息相关 Mapper）操作数据库，支持下划线与驼峰命名转换。
-5. 关键流程
-用户登录 / 注册：通过/api/user/login或/api/user/register接口，验证成功后将用户信息存入 Session。
-AI 对话：用户输入问题后，前端调用/api/chat/stream接口，后端通过 Ollama 模型生成回答，实时返回并保存对话记录。
-权限控制：未登录用户无法访问/api/**下的受保护接口（除登录 / 注册），由AuthInterceptor拦截验证。
+# AI Chat Web Application
 
-以下为运行截图
-<img width="1500" height="971" alt="image" src="https://github.com/user-attachments/assets/f18889b4-e4c8-4e15-ab0e-4495fa995b74" />
-<img width="1882" height="912" alt="image" src="https://github.com/user-attachments/assets/412af244-e852-4fd4-8b51-8e97f738ba92" />
+一个基于Spring Boot和AI技术的聊天Web应用程序，支持与AI进行文本对话、图像生成和语音合成功能。
 
+## 项目介绍
 
+本项目是一个集成了AI功能的聊天应用，用户可以通过注册登录后与AI进行交互。项目使用了多种AI技术，包括文本对话、图像生成和语音合成，为用户提供丰富的交互体验。
+
+## 技术栈
+
+- 后端框架：Spring Boot 3.4.9
+- 数据库：MySQL
+- 持久层框架：MyBatis
+- AI技术：
+  - 文本对话：Ollama + DeepSeek模型
+  - 阿里云百炼平台API
+  - 图像生成：Spring AI Image Model
+  - 语音合成：DashScope语音合成
+- 前端技术：
+  - Vue.js
+  - Element UI
+  - HTML/CSS/JavaScript
+
+## 功能特性
+
+1. 用户注册和登录系统
+2. 实时聊天功能
+3. AI文本对话（支持流式响应）
+4. 聊天历史记录保存
+5. 图像生成功能
+6. 文本转语音功能
+7. 响应式用户界面
+
+## 环境要求
+
+- Java 17+
+- Maven 3.6+
+- MySQL 5.7+
+- Ollama服务（本地部署）
+- 网络连接（用于访问阿里云百炼平台API）
+
+## 安装和配置
+
+### 1. 克隆项目
+
+```bash
+git clone <项目地址>
+cd demo
+```
+
+### 2. 数据库配置
+
+在MySQL中创建数据库：
+
+```sql
+CREATE DATABASE javaai;
+```
+
+修改 `src/main/resources/application.properties` 中的数据库配置：
+
+```properties
+spring.datasource.url=jdbc:mysql://localhost:3306/javaai
+spring.datasource.username=your_username
+spring.datasource.password=your_password
+```
+
+### 3. AI服务配置
+
+#### Ollama配置
+
+1. 安装并启动 [Ollama](https://ollama.com/)
+2. 拉取模型：
+   ```bash
+   ollama pull deepseek-r1:1.5b
+   ```
+3. 确保 `application.properties` 中配置正确：
+   ```properties
+   spring.ai.ollama.base-url=http://localhost:11434
+   spring.ai.ollama.chat.model=deepseek-r1:1.5b
+   ```
+
+#### 阿里云百炼平台配置
+
+1. 在[阿里云百炼平台](https://help.aliyun.com/zh/bailian)获取API Key
+2. 修改 `application.properties` 中的API Key：
+   ```properties
+   spring.ai.dashscope.api-key=your_api_key_here
+   ```
+
+### 4. 构建和运行
+
+使用Maven构建项目：
+
+```bash
+mvn clean install
+```
+
+运行应用：
+
+```bash
+mvn spring-boot:run
+```
+
+或者打包后运行：
+
+```bash
+mvn package
+java -jar target/demo-0.0.1-SNAPSHOT.jar
+```
+
+## 使用说明
+
+1. 访问 `http://localhost:8080/login.html` 进入登录页面
+2. 新用户需要先注册账号
+3. 登录后进入聊天界面，可以与AI进行对话
+4. 支持文本对话、图像生成和语音合成功能
+
+## 项目结构
+
+```
+src/
+├── main/
+│   ├── java/com/example/
+│   │   ├── annotation/       # 自定义注解
+│   │   ├── config/           # 配置类
+│   │   ├── controller/       # 控制器
+│   │   ├── dto/              # 数据传输对象
+│   │   ├── exception/        # 异常处理
+│   │   ├── interceptor/      # 拦截器
+│   │   ├── mapper/           # MyBatis映射器
+│   │   ├── service/          # 业务逻辑层
+│   │   └── DemoApplication.java  # 应用启动类
+│   └── resources/
+│       ├── mapper/           # MyBatis XML映射文件
+│       ├── static/           # 静态资源文件
+│       └── application.properties  # 应用配置文件
+└── test/                     # 测试代码
+```
+
+## 主要API接口
+
+- 用户相关：
+  - POST `/api/user/login` - 用户登录
+  - POST `/api/user/register` - 用户注册
+
+- 聊天相关：
+  - POST `/api/chat/call` - AI文本对话
+  - POST `/api/chat/stream` - AI流式文本对话
+  - POST `/api/chat/list` - 获取聊天历史记录
+  - POST `/api/chat/image` - 图像生成
+  - POST `/api/chat/speech` - 语音合成
+
+## 注意事项
+
+1. 确保Ollama服务在本地运行并可访问
+2. 确保数据库服务正常运行
+3. 阿里云API Key需要有效且有足够额度
+4. 语音合成和图像生成功能需要网络连接
+
+## 许可证
+
+本项目仅供学习和参考使用。
